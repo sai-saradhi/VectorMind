@@ -8,9 +8,12 @@ export interface ProfileInput {
   energy_type: EnergyType;
 }
 
+export type ResourceType = 'Docs' | 'YouTube' | 'Course' | 'Article' | 'Practice';
+
 export interface ResourceLink {
   label: string;
   url: string;
+  type: ResourceType;
 }
 
 export interface RoadmapNode {
@@ -18,6 +21,7 @@ export interface RoadmapNode {
   title: string;
   description: string;
   difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
+  learning_time_hours: number;
   deep_blocks_required: number;
   drill_blocks_required: number;
   completed_deep: number;

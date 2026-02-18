@@ -12,7 +12,8 @@ export function RoadmapPage() {
   const selectedMap = mockRoadmaps.find((r) => r.id === roadmapId) ?? mockRoadmaps[0];
 
   const [nodes, setNodes] = useState<RoadmapNode[]>(selectedMap.roadmap.nodes);
-  const [selected, setSelected] = useState<RoadmapNode | null>(nodes[0] ?? null);
+  const [selected, setSelected] = useState<RoadmapNode | null>(null);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
 
   const adaptiveHint = useMemo(() => {
     const total = nodes.reduce((acc, n) => acc + n.completed_deep + n.completed_drill, 0);
@@ -21,24 +22,30 @@ export function RoadmapPage() {
 
   const handleUpdate = (nodeId: string, deep: number, drill: number) => {
     setNodes((prev) => {
-      const next = prev.map((n) => {
+      const next: RoadmapNode[] = prev.map((n) => {
         if (n.id !== nodeId) return n;
         const deepDone = deep >= n.deep_blocks_required;
         const drillDone = drill >= n.drill_blocks_required;
-        return { ...n, completed_deep: deep, completed_drill: drill, status: deepDone && drillDone ? 'completed' : 'unlocked' };
+        const nextStatus: RoadmapNode['status'] = deepDone && drillDone ? 'completed' : 'unlocked';
+        return { ...n, completed_deep: deep, completed_drill: drill, status: nextStatus };
       });
 
       const completed = new Set(next.filter((n) => n.status === 'completed').map((n) => n.id));
-      const unlockedNext = next.map((n) => {
+      const unlockedNext: RoadmapNode[] = next.map((n) => {
         if (n.status === 'completed') return n;
         const shouldUnlock = n.prerequisites.every((p) => completed.has(p));
-        return { ...n, status: shouldUnlock ? 'unlocked' : 'locked' };
+        const status: RoadmapNode['status'] = shouldUnlock ? 'unlocked' : 'locked';
+        return { ...n, status };
       });
 
-      const freshSelected = unlockedNext.find((n) => n.id === nodeId) ?? null;
-      setSelected(freshSelected);
+      setSelected(unlockedNext.find((n) => n.id === nodeId) ?? null);
       return unlockedNext;
     });
+  };
+
+  const handleSelectNode = (node: RoadmapNode) => {
+    setSelected(node);
+    setIsPanelOpen(true);
   };
 
   return (
@@ -49,17 +56,27 @@ export function RoadmapPage() {
       </section>
 
       <section className="col-span-12 space-y-4 xl:col-span-7">
-        <div>
-          <h1 className="text-2xl font-semibold">{selectedMap.roadmap.title}</h1>
-          <p className="mt-1 text-sm text-slate-400">{selectedMap.roadmap.summary}</p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold">{selectedMap.roadmap.title}</h1>
+            <p className="mt-1 text-sm text-slate-400">{selectedMap.roadmap.summary}</p>
+          </div>
+          <button
+            className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs text-slate-300"
+            onClick={() => setIsPanelOpen(true)}
+          >
+            {selected ? 'Open selected node' : 'Open side panel'}
+          </button>
         </div>
-        <RoadmapFlow nodesData={nodes} onNodeSelect={setSelected} />
-        <NodeDetailPanel node={selected} onUpdate={handleUpdate} />
+
+        <RoadmapFlow nodesData={nodes} onNodeSelect={handleSelectNode} />
       </section>
 
       <section className="col-span-12 xl:col-span-3">
         <ChatPanel contextHint={adaptiveHint} />
       </section>
+
+      <NodeDetailPanel node={selected} isOpen={isPanelOpen} onClose={() => setIsPanelOpen(false)} onUpdate={handleUpdate} />
     </main>
   );
 }
