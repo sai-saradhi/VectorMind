@@ -2,30 +2,31 @@
 
 VectorMind is a full-stack AI-powered personalized learning roadmap platform.
 
+## Current Mode
+This branch is set up as **frontend-first mock mode** so product/UI can be iterated quickly without backend dependency.
+
 ## Stack
 - Frontend: React + Vite + TypeScript + Tailwind CSS + React Router + React Flow
 - Backend: FastAPI + SQLAlchemy + SQLite (default)
 - LLM: OpenAI Chat Completions API
 
+## Frontend Pages
+- `/` Landing
+- `/roadmaps` Mock roadmap gallery (7 roadmaps)
+- `/roadmap/:roadmapId` Roadmap workspace (clean graph spacing, node detail, mock chat)
+- `/profile` Profile editor (mock)
+- `/about` Product/build notes
+
 ## Project Structure
 ```
 backend/
   app/
-    config.py
-    main.py
-    db/
-    models/
-    prompts/
-    routers/
-    schemas/
-    services/
 frontend/
   src/
-    api/
     components/
+    data/
+    layout/
     pages/
-    styles/
-    types/
 ```
 
 ## Backend Setup
@@ -46,7 +47,7 @@ cp .env.example .env
 npm run dev
 ```
 
-## API Endpoints
+## API Endpoints (backend path retained)
 - `POST /generate-roadmap`
 - `GET /roadmap/{user_id}`
 - `POST /update-progress`
@@ -56,4 +57,4 @@ npm run dev
 ## Notes
 - Set `OPENAI_API_KEY` in `backend/.env`.
 - For production, switch `DATABASE_URL` to PostgreSQL.
-- Frontend is Vercel-friendly and backend can run on any ASGI host.
+- Frontend can later switch from mocks to backend API calls with minimal wiring changes.

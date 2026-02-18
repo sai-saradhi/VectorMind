@@ -1,59 +1,64 @@
 import { useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import { api } from '../api/client';
+import { useParams } from 'react-router-dom';
 import { ChatPanel } from '../components/ChatPanel';
 import { NodeDetailPanel } from '../components/NodeDetailPanel';
 import { ProfileSummary } from '../components/ProfileSummary';
 import { RoadmapFlow } from '../components/RoadmapFlow';
-import { ProfileInput, RoadmapNode, RoadmapPayload } from '../types';
-
-interface LocationState {
-  profile: ProfileInput;
-  user_id: number;
-  roadmap_id: number;
-  roadmap: RoadmapPayload;
-}
+import { mockProfile, mockRoadmaps } from '../data/mockRoadmaps';
+import { RoadmapNode } from '../types';
 
 export function RoadmapPage() {
-  const { state } = useLocation();
-  const data = state as LocationState;
-  const [nodes, setNodes] = useState<RoadmapNode[]>(data?.roadmap?.nodes ?? []);
-  const [selected, setSelected] = useState<RoadmapNode | null>(null);
+  const { roadmapId } = useParams();
+  const selectedMap = mockRoadmaps.find((r) => r.id === roadmapId) ?? mockRoadmaps[0];
+
+  const [nodes, setNodes] = useState<RoadmapNode[]>(selectedMap.roadmap.nodes);
+  const [selected, setSelected] = useState<RoadmapNode | null>(nodes[0] ?? null);
 
   const adaptiveHint = useMemo(() => {
-    // Placeholder adaptive check: when very low progress, suggest slower pace.
     const total = nodes.reduce((acc, n) => acc + n.completed_deep + n.completed_drill, 0);
-    return total < 2 ? 'Progress is early—start with smaller 30-45 min sessions.' : 'Good momentum. Keep building consistency.';
+    return total < 4 ? 'Pace is intentionally light. Keep sessions short and frequent.' : 'Momentum looks strong. Increase challenge in the next node.';
   }, [nodes]);
 
-  if (!data) return <main className="p-8">Missing roadmap state.</main>;
+  const handleUpdate = (nodeId: string, deep: number, drill: number) => {
+    setNodes((prev) => {
+      const next = prev.map((n) => {
+        if (n.id !== nodeId) return n;
+        const deepDone = deep >= n.deep_blocks_required;
+        const drillDone = drill >= n.drill_blocks_required;
+        return { ...n, completed_deep: deep, completed_drill: drill, status: deepDone && drillDone ? 'completed' : 'unlocked' };
+      });
 
-  const handleUpdate = async (nodeId: string, deep: number, drill: number) => {
-    await api.post('/update-progress', {
-      roadmap_id: data.roadmap_id,
-      node_id: nodeId,
-      completed_deep: deep,
-      completed_drill: drill,
+      const completed = new Set(next.filter((n) => n.status === 'completed').map((n) => n.id));
+      const unlockedNext = next.map((n) => {
+        if (n.status === 'completed') return n;
+        const shouldUnlock = n.prerequisites.every((p) => completed.has(p));
+        return { ...n, status: shouldUnlock ? 'unlocked' : 'locked' };
+      });
+
+      const freshSelected = unlockedNext.find((n) => n.id === nodeId) ?? null;
+      setSelected(freshSelected);
+      return unlockedNext;
     });
-
-    const refreshed = await api.get(`/roadmap/${data.user_id}`);
-    setNodes(refreshed.data.roadmap.nodes);
-    const updatedNode = refreshed.data.roadmap.nodes.find((n: RoadmapNode) => n.id === nodeId) ?? null;
-    setSelected(updatedNode);
   };
 
   return (
-    <main className="grid min-h-screen grid-cols-12 gap-4 p-4">
-      <section className="col-span-2 space-y-4">
-        <ProfileSummary profile={data.profile} />
-        <div className="rounded-xl bg-slate-900/70 p-3 text-xs text-slate-300">{adaptiveHint}</div>
+    <main className="grid min-h-[80vh] grid-cols-12 gap-4">
+      <section className="col-span-12 space-y-3 xl:col-span-2">
+        <ProfileSummary profile={mockProfile} />
+        <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-3 text-xs text-slate-300">{adaptiveHint}</div>
       </section>
-      <section className="col-span-7 space-y-4">
+
+      <section className="col-span-12 space-y-4 xl:col-span-7">
+        <div>
+          <h1 className="text-2xl font-semibold">{selectedMap.roadmap.title}</h1>
+          <p className="mt-1 text-sm text-slate-400">{selectedMap.roadmap.summary}</p>
+        </div>
         <RoadmapFlow nodesData={nodes} onNodeSelect={setSelected} />
         <NodeDetailPanel node={selected} onUpdate={handleUpdate} />
       </section>
-      <section className="col-span-3">
-        <ChatPanel userId={data.user_id} context={{ roadmap: { nodes } }} />
+
+      <section className="col-span-12 xl:col-span-3">
+        <ChatPanel contextHint={adaptiveHint} />
       </section>
     </main>
   );

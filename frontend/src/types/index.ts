@@ -32,3 +32,14 @@ export interface RoadmapPayload {
   summary: string;
   nodes: RoadmapNode[];
 }
+
+export interface MockRoadmap {
+  id: string;
+  category: 'Career' | 'Concept';
+  title: string;
+  tagline: string;
+  durationWeeks: number;
+  level: 'Beginner' | 'Intermediate' | 'Advanced';
+  color: string;
+  roadmap: RoadmapPayload;
+}
